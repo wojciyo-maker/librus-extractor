@@ -1,0 +1,1 @@
+extract table from page one of Helena_Oceny.pdf and convert to .xls format, the table consist of following column headers: "Przedmiot", "Okres 1", "Okres 2", "Koniec roku", additionally header columns are divided into sub columns in row 2: "Okres 1" to "Oceny Bieżące"," Śr.I" and "I", "Okres 2" to "Oceny Bieżące", "Śr.II" and "II", "Koniec roku" to "Sr.R" and "R"
