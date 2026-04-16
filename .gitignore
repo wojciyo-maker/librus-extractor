@@ -2,5 +2,5 @@
 /librus.db
 /librus.db-shm
 /librus.db-wal
-/client/node_modules/.vite/deps/
+/client/node_modules/.vite/deps/*
 data/*
