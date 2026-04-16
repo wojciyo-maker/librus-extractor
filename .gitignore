@@ -1,0 +1,6 @@
+/archive/
+/librus-result.xml
+/librus.db
+/librus.db-shm
+/librus.db-wal
+/client/node_modules/.vite/deps/
