@@ -1,12 +1,13 @@
 'use strict';
 const express = require('express');
-const { getDb } = require('../db');
+const { getDb, getActiveUserId } = require('../db');
 const router = express.Router();
 
 router.get('/', (req, res) => {
+  const userId = getActiveUserId();
   const rows = getDb().prepare(
-    'SELECT * FROM absences ORDER BY date DESC, lesson_num'
-  ).all();
+    'SELECT * FROM absences WHERE user_id = ? ORDER BY date DESC, lesson_num'
+  ).all(userId);
 
   // Group by date
   const byDate = {};

@@ -1,12 +1,13 @@
 'use strict';
 const express = require('express');
-const { getDb } = require('../db');
+const { getDb, getActiveUserId } = require('../db');
 const router = express.Router();
 
 router.get('/', (req, res) => {
+  const userId = getActiveUserId();
   const rows = getDb().prepare(
-    'SELECT * FROM announcements ORDER BY date DESC'
-  ).all();
+    'SELECT * FROM announcements WHERE user_id = ? ORDER BY date DESC'
+  ).all(userId);
   res.json(rows.map(r => ({
     id:          r.id,
     title:       r.title,

@@ -46,6 +46,7 @@ app.use(express.json());
 
 // ── API routes ────────────────────────────────────────────────────────────────
 app.use('/api/account',       require('./routes/account'));
+app.use('/api/users',         require('./routes/users'));
 app.use('/api/grades',        require('./routes/grades'));
 app.use('/api/absences',      require('./routes/absences'));
 app.use('/api/announcements', require('./routes/announcements'));

@@ -1,12 +1,15 @@
 'use strict';
 const express = require('express');
-const { getDb } = require('../db');
+const { getDb, getActiveUserId } = require('../db');
 const router = express.Router();
 
 const DAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
 router.get('/', (req, res) => {
-  const rows = getDb().prepare('SELECT * FROM timetable ORDER BY lesson_num').all();
+  const userId = getActiveUserId();
+  const rows = getDb().prepare(
+    'SELECT * FROM timetable WHERE user_id = ? ORDER BY lesson_num'
+  ).all(userId);
 
   const byDay = {};
   for (const day of DAY_ORDER) byDay[day] = [];

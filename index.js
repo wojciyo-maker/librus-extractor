@@ -1,6 +1,7 @@
 "use strict";
 const Librus = require("librus-api");
 const fs = require("fs");
+const { getDb } = require("./server/db");
 
 // Clear previous results file
 fs.writeFileSync("data/librus-result.xml", '<?xml version="1.0" encoding="UTF-8"?>\n<LibrusResults>\n');
@@ -49,8 +50,19 @@ process.on("exit", () => {
   fs.appendFileSync("data/librus-result.xml", "</LibrusResults>\n");
 });
 
+const db = getDb();
+const cfg = db.prepare("SELECT active_user_id FROM app_config WHERE id = 1").get();
+const activeId = cfg && cfg.active_user_id;
+const creds = activeId
+  ? db.prepare("SELECT username, password FROM secrets WHERE id = ?").get(activeId)
+  : db.prepare("SELECT username, password FROM secrets ORDER BY id LIMIT 1").get();
+if (!creds) {
+  console.error("No credentials found in secrets table.");
+  process.exit(1);
+}
+
 let client = new Librus();
-client.authorize("9301986", "H3l3na_lu81_c0l3").then(function () {
+client.authorize(creds.username, creds.password).then(function () {
   const logError = (label) => (error) => logToFile(label, { error: error.message });
 
   // Send message and remove must run first (serialized) because they mutate CSRF state
