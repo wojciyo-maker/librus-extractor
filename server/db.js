@@ -2,7 +2,7 @@
 const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
 
-const DB_PATH = path.join(__dirname, '..', 'librus.db');
+const DB_PATH = path.join(__dirname, '..', 'data', 'librus.db');
 let db;
 
 function getDb() {

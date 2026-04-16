@@ -3,7 +3,7 @@ const Librus = require("librus-api");
 const fs = require("fs");
 
 // Clear previous results file
-fs.writeFileSync("librus-result.xml", '<?xml version="1.0" encoding="UTF-8"?>\n<LibrusResults>\n');
+fs.writeFileSync("data/librus-result.xml", '<?xml version="1.0" encoding="UTF-8"?>\n<LibrusResults>\n');
 
 // Helper function to escape XML special characters
 function escapeXml(str) {
@@ -41,12 +41,12 @@ function toXml(value, indent) {
 function logToFile(label, data) {
   const tag = label.replace(/\s+/g, "_");
   const content = `  <${tag}>${toXml(data, 1)}  </${tag}>\n`;
-  fs.appendFileSync("librus-result.xml", content);
+  fs.appendFileSync("data/librus-result.xml", content);
 }
 
 // Finalize XML file on process exit
 process.on("exit", () => {
-  fs.appendFileSync("librus-result.xml", "</LibrusResults>\n");
+  fs.appendFileSync("data/librus-result.xml", "</LibrusResults>\n");
 });
 
 let client = new Librus();

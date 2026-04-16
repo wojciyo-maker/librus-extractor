@@ -4,7 +4,7 @@ const path = require('path');
 const xml2js = require('xml2js');
 const { getDb } = require('./db');
 
-const XML_PATH = path.join(__dirname, '..', 'librus-result.xml');
+const XML_PATH = path.join(__dirname, '..', 'data', 'librus-result.xml');
 
 // xml2js chokes on tag names starting with digits (invalid XML); prefix them
 function preprocessXml(xml) {
@@ -53,7 +53,7 @@ function cleanDate(str) {
 
 async function parseAndSync() {
   if (!fs.existsSync(XML_PATH)) {
-    throw new Error('librus-result.xml not found. Run node index.js first.');
+    throw new Error('data/librus-result.xml not found. Run node index.js first.');
   }
 
   const xmlRaw = fs.readFileSync(XML_PATH, 'utf-8');
