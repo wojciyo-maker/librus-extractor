@@ -1,42 +1,12 @@
 'use strict';
 require('dotenv').config();
-const express        = require('express');
-const cors           = require('cors');
-const path           = require('path');
-const cron           = require('node-cron');
-const { spawn }      = require('child_process');
-const { parseAndSync }     = require('./parser');
-const { sendNotification } = require('./email');
+const express  = require('express');
+const cors     = require('cors');
+const path     = require('path');
+const cron     = require('node-cron');
+const { scrapeAndParseAll } = require('./scraper');
 
-const SCRAPER = path.join(__dirname, '..', 'index.js');
-const TZ      = 'Europe/Warsaw';
-
-function runScraper() {
-  return new Promise((resolve, reject) => {
-    console.log('[cron] Running scraper (index.js)…');
-    const child = spawn(process.execPath, [SCRAPER], { stdio: 'inherit' });
-    child.on('close', code => {
-      if (code === 0) resolve();
-      else reject(new Error(`index.js exited with code ${code}`));
-    });
-    child.on('error', reject);
-  });
-}
-
-async function scrapeAndSync(label) {
-  console.log(`[cron] ${label} started`);
-  try {
-    await runScraper();
-    const result = await parseAndSync();
-    console.log(`[cron] ${label} synced. Changes: ${result.totalChanges}`);
-    if (result.totalChanges > 0) {
-      const emailResult = await sendNotification(result.changes, result.syncedAt);
-      console.log(`[cron] ${label} email:`, emailResult);
-    }
-  } catch (err) {
-    console.error(`[cron] ${label} error:`, err.message);
-  }
-}
+const TZ = 'Europe/Warsaw';
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -65,8 +35,15 @@ app.get('*', (req, res) => {
 });
 
 // ── Scheduled scrape: 08:00 and 17:00 CET/CEST ───────────────────────────────
-cron.schedule('0 8  * * *', () => scrapeAndSync('08:00'), { timezone: TZ });
-cron.schedule('0 17 * * *', () => scrapeAndSync('17:00'), { timezone: TZ });
+function runScheduled(label) {
+  console.log(`[cron] ${label} started`);
+  scrapeAndParseAll()
+    .then(r => console.log(`[cron] ${label} done. Total changes: ${r.totalChanges}`))
+    .catch(e => console.error(`[cron] ${label} error:`, e.message));
+}
+
+cron.schedule('0 8  * * *', () => runScheduled('08:00'), { timezone: TZ });
+cron.schedule('0 17 * * *', () => runScheduled('17:00'), { timezone: TZ });
 
 app.listen(PORT, () => {
   console.log(`Librus Dashboard running at http://localhost:${PORT}`);

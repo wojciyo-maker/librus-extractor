@@ -51,8 +51,9 @@ export default function App() {
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setSyncMsg(`Zsynchronizowano. Zmian: ${data.totalChanges}`);
-      // Refresh account after sync
-      fetch('/api/account').then(r => r.json()).then(setAccount).catch(() => {});
+      // Refresh account and all data pages after sync
+      loadAccount();
+      setDataVersion(v => v + 1);
     } catch (e) {
       setSyncMsg(`Błąd: ${e.message}`);
     } finally {
