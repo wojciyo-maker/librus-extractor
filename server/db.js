@@ -37,11 +37,12 @@ function fixBadAppConfig(db) {
 }
 
 function migrateSecrets(db) {
-  // Add label column to existing secrets tables that pre-date multi-user support
   const cols = db.prepare('PRAGMA table_info(secrets)').all();
-  const hasLabel = cols.some(c => c.name === 'label');
-  if (!hasLabel) {
+  if (!cols.some(c => c.name === 'label')) {
     db.exec('ALTER TABLE secrets ADD COLUMN label TEXT');
+  }
+  if (!cols.some(c => c.name === 'student_type')) {
+    db.exec('ALTER TABLE secrets ADD COLUMN student_type TEXT');
   }
 }
 
@@ -250,10 +251,11 @@ function initSchema(db) {
     INSERT OR IGNORE INTO notifications_config (id) VALUES (1);
 
     CREATE TABLE IF NOT EXISTS secrets (
-      id       INTEGER PRIMARY KEY,
-      username TEXT NOT NULL,
-      password TEXT NOT NULL,
-      label    TEXT
+      id           INTEGER PRIMARY KEY,
+      username     TEXT NOT NULL,
+      password     TEXT NOT NULL,
+      label        TEXT,
+      student_type TEXT
     );
 
     CREATE TABLE IF NOT EXISTS app_config (
