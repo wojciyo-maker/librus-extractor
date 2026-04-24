@@ -146,6 +146,7 @@ tr:hover td { background: #f8fafc; }
 .grade-2 { background: var(--grade-2); }
 .grade-1 { background: var(--grade-1); }
 .grade-x { background: var(--grade-x); }
+.grade-t { background: #0891b2; }
 
 /* ── Page header ── */
 .page-header { margin-bottom: 20px; }

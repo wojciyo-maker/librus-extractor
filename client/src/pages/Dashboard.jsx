@@ -10,6 +10,7 @@ function useFetch(url) {
 }
 
 function gradeClass(v) {
+  if (v === 'T') return 'grade-t';
   const n = parseFloat(v);
   if (n >= 6) return 'grade-6';
   if (n >= 5) return 'grade-5';
@@ -18,6 +19,11 @@ function gradeClass(v) {
   if (n >= 2) return 'grade-2';
   if (n === 1) return 'grade-1';
   return 'grade-x';
+}
+
+function formatCategory(cat) {
+  if (!cat) return '–';
+  return cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase();
 }
 
 export default function Dashboard() {
@@ -67,7 +73,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }}>
         {/* Recent grades */}
         <div className="card">
           <div className="card-title">Ostatnie oceny</div>
@@ -82,7 +88,7 @@ export default function Dashboard() {
                       <tr key={g.id}>
                         <td style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.subject}</td>
                         <td><span className={`grade-badge ${gradeClass(g.value)}`}>{g.value}</span></td>
-                        <td style={{ color: 'var(--muted)', fontSize: 12 }}>{g.category || '–'}</td>
+                        <td style={{ color: 'var(--muted)', fontSize: 12 }}>{formatCategory(g.category)}</td>
                         <td style={{ color: 'var(--muted)', fontSize: 12 }}>{g.date || '–'}</td>
                       </tr>
                     ))}
@@ -101,7 +107,7 @@ export default function Dashboard() {
               <div key={a.id} style={{ marginBottom: 14, paddingBottom: 14, borderBottom: '1px solid var(--border)' }}>
                 <div style={{ fontWeight: 600, fontSize: 13 }}>{a.title}</div>
                 <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{a.userName} · {a.date}</div>
-                <div style={{ fontSize: 12, color: '#374151', marginTop: 6, maxHeight: 52, overflow: 'hidden', lineHeight: 1.5 }}>{a.content}</div>
+                <div style={{ fontSize: 12, color: '#374151', marginTop: 6, maxHeight: 52, overflow: 'hidden', lineHeight: 1.5, overflowWrap: 'break-word', wordBreak: 'break-word' }}>{a.content}</div>
               </div>
             ))}
         </div>

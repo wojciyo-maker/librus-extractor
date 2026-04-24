@@ -5,12 +5,17 @@ const router = express.Router();
 
 const VALID_STUDENT_TYPES = ['primary_lower', 'primary_upper', 'secondary'];
 
-// GET /api/users — list all users with active flag
+// GET /api/users — list all users with active flag and student name from account table
 router.get('/', (req, res) => {
   const db = getDb();
   const cfg = db.prepare('SELECT active_user_id FROM app_config WHERE id = 1').get();
   const activeId = cfg ? cfg.active_user_id : null;
-  const users = db.prepare('SELECT id, username, label, student_type FROM secrets ORDER BY id').all();
+  const users = db.prepare(`
+    SELECT s.id, s.username, s.label, s.student_type, a.student_name
+    FROM secrets s
+    LEFT JOIN account a ON a.id = s.id
+    ORDER BY s.id
+  `).all();
   res.json(users.map(u => ({ ...u, is_active: u.id === activeId })));
 });
 

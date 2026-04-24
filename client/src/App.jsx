@@ -80,7 +80,7 @@ export default function App() {
               >
                 {users.map(u => (
                   <option key={u.id} value={u.id}>
-                    {u.label || u.username}
+                    {u.label || u.student_name || u.username}
                   </option>
                 ))}
               </select>
