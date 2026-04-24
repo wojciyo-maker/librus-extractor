@@ -33,6 +33,7 @@ function parseGradeInfo(info) {
     const value = line.substring(colonIdx + 1).trim();
     switch (key) {
       case 'Kategoria':         result.category = value; break;
+      case 'Umiejętność':       result.category = value; break;
       case 'Data':              result.date = value.replace(/\s*\([^)]+\)$/, '').trim(); break;
       case 'Nauczyciel':        result.teacher = value; break;
       case 'Licz do średniej':  result.countsForAverage = value === 'tak' ? 1 : 0; break;
