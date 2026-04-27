@@ -1,12 +1,15 @@
 'use strict';
 const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
+const fs   = require('fs');
 
-const DB_PATH = path.join(__dirname, '..', 'data', 'librus.db');
+const DATA_DIR = path.join(__dirname, '..', 'data');
+const DB_PATH  = path.join(DATA_DIR, 'librus.db');
 let db;
 
 function getDb() {
   if (!db) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
     db = new DatabaseSync(DB_PATH);
     db.exec('PRAGMA journal_mode = WAL');
     fixBadAppConfig(db);
