@@ -18,12 +18,30 @@ const NAV = [
 
 export default function App() {
   const [account, setAccount] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [dataVersion, setDataVersion] = useState(0);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState(null);
 
-  useEffect(() => {
+  function loadAccount() {
     fetch('/api/account').then(r => r.json()).then(setAccount).catch(() => {});
+  }
+
+  function loadUsers() {
+    fetch('/api/users').then(r => r.json()).then(setUsers).catch(() => {});
+  }
+
+  useEffect(() => {
+    loadAccount();
+    loadUsers();
   }, []);
+
+  async function handleUserSwitch(id) {
+    await fetch(`/api/users/${id}/activate`, { method: 'POST' });
+    loadUsers();
+    loadAccount();
+    setDataVersion(v => v + 1);
+  }
 
   async function handleSync() {
     setSyncing(true);
@@ -33,8 +51,9 @@ export default function App() {
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setSyncMsg(`Zsynchronizowano. Zmian: ${data.totalChanges}`);
-      // Refresh account after sync
-      fetch('/api/account').then(r => r.json()).then(setAccount).catch(() => {});
+      // Refresh account and all data pages after sync
+      loadAccount();
+      setDataVersion(v => v + 1);
     } catch (e) {
       setSyncMsg(`Błąd: ${e.message}`);
     } finally {
@@ -46,12 +65,28 @@ export default function App() {
     <div className="layout">
       <aside className="sidebar">
         <div className="sidebar-logo">📚 Librus</div>
-        {account && (
-          <div className="sidebar-student">
-            <strong>{account.student_name}</strong>
-            {account.student_class}
-          </div>
-        )}
+        <div className="sidebar-student">
+          {account && (
+            <>
+              <strong>{account.student_name}</strong>
+              <span className="sidebar-student-class">{account.student_class}</span>
+            </>
+          )}
+          {users.length > 1 && (
+            <div className="user-switcher">
+              <select
+                value={users.find(u => u.is_active)?.id ?? ''}
+                onChange={e => handleUserSwitch(Number(e.target.value))}
+              >
+                {users.map(u => (
+                  <option key={u.id} value={u.id}>
+                    {u.label || u.student_name || u.username}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
         <nav>
           {NAV.map(({ to, icon, label }) => (
             <NavLink
@@ -77,7 +112,7 @@ export default function App() {
         </div>
       </aside>
 
-      <main className="main">
+      <main className="main" key={dataVersion}>
         <Routes>
           <Route path="/"              element={<Dashboard />} />
           <Route path="/grades"        element={<Grades />} />

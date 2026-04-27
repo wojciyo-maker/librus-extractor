@@ -1,9 +1,20 @@
 "use strict";
 const Librus = require("librus-api");
 const fs = require("fs");
+const { getDb } = require("./server/db");
+
+// Resolve which user to scrape: --user=N arg takes priority, then active_user_id
+const db = getDb();
+const userArg = process.argv.find(a => a.startsWith('--user='));
+const cliUserId = userArg ? parseInt(userArg.split('=')[1]) : null;
+const cfg = db.prepare("SELECT active_user_id FROM app_config WHERE id = 1").get();
+const userId = cliUserId || (cfg && cfg.active_user_id) || 1;
+
+// Use a per-user XML file so parallel/sequential multi-user syncs don't clobber each other
+const XML_FILE = `data/librus-result-${userId}.xml`;
 
 // Clear previous results file
-fs.writeFileSync("data/librus-result.xml", '<?xml version="1.0" encoding="UTF-8"?>\n<LibrusResults>\n');
+fs.writeFileSync(XML_FILE, '<?xml version="1.0" encoding="UTF-8"?>\n<LibrusResults>\n');
 
 // Helper function to escape XML special characters
 function escapeXml(str) {
@@ -41,16 +52,22 @@ function toXml(value, indent) {
 function logToFile(label, data) {
   const tag = label.replace(/\s+/g, "_");
   const content = `  <${tag}>${toXml(data, 1)}  </${tag}>\n`;
-  fs.appendFileSync("data/librus-result.xml", content);
+  fs.appendFileSync(XML_FILE, content);
 }
 
 // Finalize XML file on process exit
 process.on("exit", () => {
-  fs.appendFileSync("data/librus-result.xml", "</LibrusResults>\n");
+  fs.appendFileSync(XML_FILE, "</LibrusResults>\n");
 });
 
+const creds = db.prepare("SELECT username, password FROM secrets WHERE id = ?").get(userId);
+if (!creds) {
+  console.error("No credentials found in secrets table.");
+  process.exit(1);
+}
+
 let client = new Librus();
-client.authorize("9301986", "H3l3na_lu81_c0l3").then(function () {
+client.authorize(creds.username, creds.password).then(function () {
   const logError = (label) => (error) => logToFile(label, { error: error.message });
 
   // Send message and remove must run first (serialized) because they mutate CSRF state

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 
 function gradeClass(v) {
+  if (v === 'T') return 'grade-t';
   const n = parseFloat(v);
   if (n >= 6) return 'grade-6';
   if (n >= 5) return 'grade-5';
@@ -9,6 +10,11 @@ function gradeClass(v) {
   if (n >= 2) return 'grade-2';
   if (n === 1) return 'grade-1';
   return 'grade-x';
+}
+
+function formatCategory(cat) {
+  if (!cat) return '–';
+  return cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase();
 }
 
 function Tooltip({ text, children }) {
@@ -134,7 +140,7 @@ export default function Grades() {
                                 <span className={`grade-badge ${gradeClass(g.value)}`}>{g.value}</span>
                               </Tooltip>
                             </td>
-                            <td>{g.category || '–'}</td>
+                            <td>{formatCategory(g.category)}</td>
                             <td style={{ color: 'var(--muted)', fontSize: 12 }}>{g.date || '–'}</td>
                             <td style={{ color: 'var(--muted)', fontSize: 12 }}>{g.teacher || '–'}</td>
                             <td style={{ color: 'var(--muted)', textAlign: 'center' }}>{g.weight ?? '–'}</td>

@@ -1,12 +1,13 @@
 'use strict';
 const express = require('express');
-const { getDb } = require('../db');
+const { getDb, getActiveUserId } = require('../db');
 const router = express.Router();
 
 router.get('/', (req, res) => {
+  const userId = getActiveUserId();
   const rows = getDb().prepare(
-    'SELECT * FROM grades ORDER BY subject, semester, date'
-  ).all();
+    'SELECT * FROM grades WHERE user_id = ? ORDER BY subject, semester, date'
+  ).all(userId);
 
   // Group: subject → semester → grades[]
   const map = {};

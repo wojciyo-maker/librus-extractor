@@ -1,9 +1,39 @@
 import { useState, useEffect } from 'react';
 
+const STUDENT_TYPE_LABELS = {
+  primary_lower: 'Szkoła podstawowa (klasy 1–3)',
+  primary_upper: 'Szkoła podstawowa (klasy 4–8)',
+  secondary:     'Szkoła ponadpodstawowa',
+};
+
 export default function Settings() {
   const [form, setForm]     = useState(null);
   const [msg, setMsg]       = useState(null);
   const [saving, setSaving] = useState(false);
+  const [users, setUsers]   = useState([]);
+  const [userMsg, setUserMsg] = useState({});
+
+  useEffect(() => {
+    fetch('/api/users').then(r => r.json()).then(setUsers).catch(() => {});
+  }, []);
+
+  async function saveStudentType(userId, student_type) {
+    setUserMsg(m => ({ ...m, [userId]: null }));
+    try {
+      const res = await fetch(`/api/users/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_type }),
+      });
+      const data = await res.json();
+      if (data.id) {
+        setUsers(us => us.map(u => u.id === userId ? { ...u, student_type: data.student_type } : u));
+        setUserMsg(m => ({ ...m, [userId]: 'ok' }));
+      }
+    } catch {
+      setUserMsg(m => ({ ...m, [userId]: 'error' }));
+    }
+  }
 
   useEffect(() => {
     fetch('/api/settings').then(r => r.json()).then(data => {
@@ -57,6 +87,32 @@ export default function Settings() {
         <h1>Ustawienia</h1>
         <p>Konfiguracja powiadomień e-mail</p>
       </div>
+
+      {users.length > 0 && (
+        <div className="card" style={{ marginBottom: 24, maxWidth: 560 }}>
+          <div className="card-title">Użytkownicy</div>
+          {users.map(u => (
+            <div key={u.id} className="form-row" style={{ alignItems: 'center', marginBottom: 12 }}>
+              <div className="form-group" style={{ flex: '0 0 auto', marginBottom: 0 }}>
+                <label style={{ marginBottom: 4 }}>{u.label || u.username}</label>
+              </div>
+              <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                <select
+                  value={u.student_type || ''}
+                  onChange={e => saveStudentType(u.id, e.target.value || null)}
+                >
+                  <option value="">— wybierz typ —</option>
+                  {Object.entries(STUDENT_TYPE_LABELS).map(([val, label]) => (
+                    <option key={val} value={val}>{label}</option>
+                  ))}
+                </select>
+              </div>
+              {userMsg[u.id] === 'ok' && <span style={{ color: 'var(--success)', fontSize: 13, marginLeft: 8 }}>✓</span>}
+              {userMsg[u.id] === 'error' && <span style={{ color: 'var(--danger)', fontSize: 13, marginLeft: 8 }}>✗</span>}
+            </div>
+          ))}
+        </div>
+      )}
 
       <form onSubmit={save} style={{ maxWidth: 560 }}>
         {msg && (

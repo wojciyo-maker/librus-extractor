@@ -4,8 +4,6 @@ const path = require('path');
 const xml2js = require('xml2js');
 const { getDb } = require('./db');
 
-const XML_PATH = path.join(__dirname, '..', 'data', 'librus-result.xml');
-
 // xml2js chokes on tag names starting with digits (invalid XML); prefix them
 function preprocessXml(xml) {
   xml = xml.replace(/<(\d[\w-]*)/g, '<n_$1');
@@ -35,6 +33,7 @@ function parseGradeInfo(info) {
     const value = line.substring(colonIdx + 1).trim();
     switch (key) {
       case 'Kategoria':         result.category = value; break;
+      case 'Umiejętność':       result.category = value; break;
       case 'Data':              result.date = value.replace(/\s*\([^)]+\)$/, '').trim(); break;
       case 'Nauczyciel':        result.teacher = value; break;
       case 'Licz do średniej':  result.countsForAverage = value === 'tak' ? 1 : 0; break;
@@ -51,12 +50,13 @@ function cleanDate(str) {
   return String(str).replace(/\s*\([^)]+\)$/, '').trim();
 }
 
-async function parseAndSync() {
-  if (!fs.existsSync(XML_PATH)) {
-    throw new Error('data/librus-result.xml not found. Run node index.js first.');
+async function parseAndSync(userId = 1) {
+  const xmlPath = path.join(__dirname, '..', 'data', `librus-result-${userId}.xml`);
+  if (!fs.existsSync(xmlPath)) {
+    throw new Error(`data/librus-result-${userId}.xml not found. Run sync first.`);
   }
 
-  const xmlRaw = fs.readFileSync(XML_PATH, 'utf-8');
+  const xmlRaw = fs.readFileSync(xmlPath, 'utf-8');
   const xmlFixed = preprocessXml(xmlRaw);
 
   const parsed = await xml2js.parseStringPromise(xmlFixed, {
@@ -80,8 +80,9 @@ async function parseAndSync() {
     if (student) {
       db.prepare(`
         INSERT OR REPLACE INTO account (id, student_name, student_class, student_index, educator, login, updated_at)
-        VALUES (1, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `).run(
+        userId,
         student.nameSurname?.[0] ?? null,
         student.class?.[0] ?? null,
         student.index?.[0] ?? null,
@@ -98,7 +99,7 @@ async function parseAndSync() {
       const id = parseInt(item.id?.[0]);
       const name = item.name?.[0];
       if (id && name) {
-        db.prepare('INSERT OR REPLACE INTO subjects (id, name) VALUES (?, ?)').run(id, name);
+        db.prepare('INSERT OR REPLACE INTO subjects (id, user_id, name) VALUES (?, ?, ?)').run(id, userId, name);
       }
     }
   }
@@ -106,9 +107,9 @@ async function parseAndSync() {
   // ── Grades ───────────────────────────────────────────────────────────────────
   if (root.Grades) {
     const upsertGrade = db.prepare(`
-      INSERT INTO grades (id, subject, semester, value, category, date, teacher, weight, counts_for_average, comment, first_seen_at, synced_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET
+      INSERT INTO grades (id, user_id, subject, semester, value, category, date, teacher, weight, counts_for_average, comment, first_seen_at, synced_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id, user_id) DO UPDATE SET
         value = excluded.value, category = excluded.category, date = excluded.date,
         teacher = excluded.teacher, weight = excluded.weight,
         counts_for_average = excluded.counts_for_average, comment = excluded.comment,
@@ -126,14 +127,14 @@ async function parseAndSync() {
           if (!id || value == null) continue;
 
           const info = parseGradeInfo(gradeItem.info?.[0]);
-          const isNew = !db.prepare('SELECT 1 FROM grades WHERE id = ?').get(id);
+          const isNew = !db.prepare('SELECT 1 FROM grades WHERE id = ? AND user_id = ?').get(id, userId);
 
           // Default: numeric grades count; 'np'/'nob'/symbolic ones don't
           const defaultCount = /^\d+(\+|-)?$/.test(value) ? 1 : 0;
           const countsForAverage = info.countsForAverage ?? defaultCount;
 
           upsertGrade.run(
-            id, subjectName, semIdx + 1, value,
+            id, userId, subjectName, semIdx + 1, value,
             info.category ?? null, info.date ?? null, info.teacher ?? null,
             info.weight ?? null, countsForAverage,
             info.comment ?? null,
@@ -148,9 +149,9 @@ async function parseAndSync() {
   // ── Absences ──────────────────────────────────────────────────────────────────
   if (root.Absences) {
     const upsertAbsence = db.prepare(`
-      INSERT INTO absences (id, date, lesson_num, type, first_seen_at, synced_at)
-      VALUES (?, ?, ?, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET type = excluded.type, synced_at = excluded.synced_at
+      INSERT INTO absences (id, user_id, date, lesson_num, type, first_seen_at, synced_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id, user_id) DO UPDATE SET type = excluded.type, synced_at = excluded.synced_at
     `);
 
     const absRoot = root.Absences[0];
@@ -163,8 +164,8 @@ async function parseAndSync() {
             const type = cell.type?.[0];
             const id = parseInt(cell.id?.[0]);
             if (!id || !type) return;
-            const isNew = !db.prepare('SELECT 1 FROM absences WHERE id = ?').get(id);
-            upsertAbsence.run(id, date, lessonIdx + 1, type, now, now);
+            const isNew = !db.prepare('SELECT 1 FROM absences WHERE id = ? AND user_id = ?').get(id, userId);
+            upsertAbsence.run(id, userId, date, lessonIdx + 1, type, now, now);
             if (isNew) changes.absences.push({ id, date, lessonNum: lessonIdx + 1, type });
           });
         }
@@ -175,16 +176,16 @@ async function parseAndSync() {
   // ── Homework ──────────────────────────────────────────────────────────────────
   if (root.Homeworks) {
     const upsertHw = db.prepare(`
-      INSERT INTO homework (id, subject, title, description, teacher, date_added, first_seen_at, synced_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET synced_at = excluded.synced_at
+      INSERT INTO homework (id, user_id, subject, title, description, teacher, date_added, first_seen_at, synced_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id, user_id) DO UPDATE SET synced_at = excluded.synced_at
     `);
     for (const item of ensureArray(root.Homeworks[0]?.item)) {
       const id = parseInt(item.id?.[0]);
       if (!id) continue;
-      const isNew = !db.prepare('SELECT 1 FROM homework WHERE id = ?').get(id);
+      const isNew = !db.prepare('SELECT 1 FROM homework WHERE id = ? AND user_id = ?').get(id, userId);
       upsertHw.run(
-        id,
+        id, userId,
         item.subject?.[0] ?? null, item.title?.[0] ?? null,
         item.description?.[0] ?? null, item.teacher?.[0] ?? null,
         item.date?.[0] ?? null, now, now
@@ -196,36 +197,36 @@ async function parseAndSync() {
   // ── Announcements ─────────────────────────────────────────────────────────────
   if (root.Announcements) {
     const upsertAnn = db.prepare(`
-      INSERT INTO announcements (id, title, user_name, date, content, first_seen_at, synced_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET synced_at = excluded.synced_at
+      INSERT INTO announcements (id, user_id, title, user_name, date, content, first_seen_at, synced_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id, user_id) DO UPDATE SET synced_at = excluded.synced_at
     `);
     for (const item of ensureArray(root.Announcements[0]?.item)) {
       const title = item.title?.[0] ?? '';
       const date  = item.date?.[0] ?? '';
       // Stable ID: base64 of title+date, capped to 40 chars
       const id = Buffer.from(title + '|' + date).toString('base64').substring(0, 40);
-      const isNew = !db.prepare('SELECT 1 FROM announcements WHERE id = ?').get(id);
-      upsertAnn.run(id, title, item.user?.[0] ?? null, date, item.content?.[0] ?? null, now, now);
+      const isNew = !db.prepare('SELECT 1 FROM announcements WHERE id = ? AND user_id = ?').get(id, userId);
+      upsertAnn.run(id, userId, title, item.user?.[0] ?? null, date, item.content?.[0] ?? null, now, now);
       if (isNew) changes.announcements.push({ id, title, date });
     }
   }
 
-  // ── Timetable (full refresh each sync) ────────────────────────────────────────
+  // ── Timetable (full refresh per user each sync) ───────────────────────────────
   if (root.Timetable) {
-    db.prepare('DELETE FROM timetable').run();
+    db.prepare('DELETE FROM timetable WHERE user_id = ?').run(userId);
     const table = root.Timetable[0]?.table?.[0];
     if (table) {
       const insert = db.prepare(`
-        INSERT OR REPLACE INTO timetable (day_of_week, lesson_num, subject, teacher, room, time_slot)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT OR REPLACE INTO timetable (user_id, day_of_week, lesson_num, subject, teacher, room, time_slot)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `);
       for (const day of ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']) {
         ensureArray(table[day]?.[0]?.item).forEach((item, idx) => {
           if (!item || typeof item !== 'object') return;
           const subject = item.subject?.[0];
           if (!subject) return;
-          insert.run(day, idx + 1, subject, item.teacher?.[0] ?? null, item.room?.[0] ?? null, item.time?.[0] ?? null);
+          insert.run(userId, day, idx + 1, subject, item.teacher?.[0] ?? null, item.room?.[0] ?? null, item.time?.[0] ?? null);
         });
       }
     }
@@ -233,7 +234,7 @@ async function parseAndSync() {
 
   // ── Sync log ──────────────────────────────────────────────────────────────────
   const totalChanges = Object.values(changes).reduce((s, a) => s + a.length, 0);
-  db.prepare('INSERT INTO sync_log (synced_at, changes_json) VALUES (?, ?)').run(now, JSON.stringify(changes));
+  db.prepare('INSERT INTO sync_log (user_id, synced_at, changes_json) VALUES (?, ?, ?)').run(userId, now, JSON.stringify(changes));
 
   return { changes, totalChanges, syncedAt: now };
 }
