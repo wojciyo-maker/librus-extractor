@@ -6,16 +6,60 @@ const STUDENT_TYPE_LABELS = {
   secondary:     'Szkoła ponadpodstawowa',
 };
 
-export default function Settings() {
-  const [form, setForm]     = useState(null);
-  const [msg, setMsg]       = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [users, setUsers]   = useState([]);
-  const [userMsg, setUserMsg] = useState({});
+const EMPTY_NEW_USER = { username: '', password: '', label: '', student_type: '' };
 
-  useEffect(() => {
+export default function Settings() {
+  const [form, setForm]       = useState(null);
+  const [msg, setMsg]         = useState(null);
+  const [saving, setSaving]   = useState(false);
+  const [users, setUsers]     = useState([]);
+  const [userMsg, setUserMsg] = useState({});
+  const [newUser, setNewUser] = useState(EMPTY_NEW_USER);
+  const [addMsg, setAddMsg]   = useState(null);
+  const [adding, setAdding]   = useState(false);
+
+  function loadUsers() {
     fetch('/api/users').then(r => r.json()).then(setUsers).catch(() => {});
-  }, []);
+  }
+
+  useEffect(() => { loadUsers(); }, []);
+
+  async function handleAddUser(e) {
+    e.preventDefault();
+    setAdding(true);
+    setAddMsg(null);
+    try {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username:     newUser.username,
+          password:     newUser.password,
+          label:        newUser.label || undefined,
+          student_type: newUser.student_type || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Błąd');
+      setNewUser(EMPTY_NEW_USER);
+      setAddMsg({ type: 'success', text: 'Użytkownik dodany.' });
+      loadUsers();
+    } catch (err) {
+      setAddMsg({ type: 'error', text: err.message });
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  async function handleDeleteUser(id) {
+    if (!window.confirm('Usunąć tego użytkownika?')) return;
+    const res = await fetch(`/api/users/${id}`, { method: 'DELETE' });
+    if (res.ok) loadUsers();
+    else {
+      const data = await res.json();
+      alert(data.error || 'Błąd usuwania');
+    }
+  }
 
   async function saveStudentType(userId, student_type) {
     setUserMsg(m => ({ ...m, [userId]: null }));
@@ -88,16 +132,20 @@ export default function Settings() {
         <p>Konfiguracja powiadomień e-mail</p>
       </div>
 
-      {users.length > 0 && (
-        <div className="card" style={{ marginBottom: 24, maxWidth: 560 }}>
-          <div className="card-title">Użytkownicy</div>
-          {users.map(u => (
-            <div key={u.id} className="form-row" style={{ alignItems: 'center', marginBottom: 12 }}>
-              <div className="form-group" style={{ flex: '0 0 auto', marginBottom: 0 }}>
-                <label style={{ marginBottom: 4 }}>{u.label || u.username}</label>
-              </div>
-              <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+      <div className="card" style={{ marginBottom: 24, maxWidth: 560 }}>
+        <div className="card-title">Użytkownicy</div>
+
+        {/* Existing users */}
+        {users.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            {users.map(u => (
+              <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <div style={{ flex: '0 0 130px', fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {u.label || u.student_name || u.username}
+                  {u.is_active && <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--primary)', fontWeight: 600 }}>●</span>}
+                </div>
                 <select
+                  style={{ flex: 1 }}
                   value={u.student_type || ''}
                   onChange={e => saveStudentType(u.id, e.target.value || null)}
                 >
@@ -106,13 +154,59 @@ export default function Settings() {
                     <option key={val} value={val}>{label}</option>
                   ))}
                 </select>
+                {userMsg[u.id] === 'ok' && <span style={{ color: '#16a34a', fontSize: 13 }}>✓</span>}
+                {userMsg[u.id] === 'error' && <span style={{ color: '#dc2626', fontSize: 13 }}>✗</span>}
+                <button
+                  type="button"
+                  onClick={() => handleDeleteUser(u.id)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: 16, padding: '0 4px' }}
+                  title="Usuń użytkownika"
+                >×</button>
               </div>
-              {userMsg[u.id] === 'ok' && <span style={{ color: 'var(--success)', fontSize: 13, marginLeft: 8 }}>✓</span>}
-              {userMsg[u.id] === 'error' && <span style={{ color: 'var(--danger)', fontSize: 13, marginLeft: 8 }}>✗</span>}
+            ))}
+          </div>
+        )}
+
+        {/* Add user form */}
+        <form onSubmit={handleAddUser}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 10 }}>
+            Dodaj użytkownika
+          </div>
+          {addMsg && (
+            <div className={`banner banner-${addMsg.type}`} style={{ marginBottom: 10 }}>
+              {addMsg.text}
             </div>
-          ))}
-        </div>
-      )}
+          )}
+          <div className="form-row" style={{ marginBottom: 8 }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Login Librus</label>
+              <input type="text" value={newUser.username} onChange={e => setNewUser(u => ({ ...u, username: e.target.value }))} placeholder="np. 12345678" required />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Hasło</label>
+              <input type="password" value={newUser.password} onChange={e => setNewUser(u => ({ ...u, password: e.target.value }))} placeholder="Hasło Librus" required />
+            </div>
+          </div>
+          <div className="form-row" style={{ marginBottom: 12 }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Etykieta (opcjonalna)</label>
+              <input type="text" value={newUser.label} onChange={e => setNewUser(u => ({ ...u, label: e.target.value }))} placeholder="np. Helena" />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Typ ucznia</label>
+              <select value={newUser.student_type} onChange={e => setNewUser(u => ({ ...u, student_type: e.target.value }))}>
+                <option value="">— wybierz typ —</option>
+                {Object.entries(STUDENT_TYPE_LABELS).map(([val, label]) => (
+                  <option key={val} value={val}>{label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <button type="submit" className="btn btn-primary" disabled={adding}>
+            {adding ? '⏳ Dodawanie…' : '+ Dodaj użytkownika'}
+          </button>
+        </form>
+      </div>
 
       <form onSubmit={save} style={{ maxWidth: 560 }}>
         {msg && (
