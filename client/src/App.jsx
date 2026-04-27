@@ -72,7 +72,7 @@ export default function App() {
               <span className="sidebar-student-class">{account.student_class}</span>
             </>
           )}
-          {users.length > 1 && (
+          {users.length > 0 && (
             <div className="user-switcher">
               <select
                 value={users.find(u => u.is_active)?.id ?? ''}
