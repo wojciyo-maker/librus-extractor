@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiFetch } from '../api.js';
 
 function AnnCard({ ann }) {
   const [expanded, setExpanded] = useState(false);
@@ -25,7 +26,7 @@ export default function Announcements() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    fetch('/api/announcements').then(r => r.json()).then(setData).catch(() => {});
+    apiFetch('/api/announcements').then(r => r.json()).then(setData).catch(() => {});
   }, []);
 
   if (!data) return <div className="loading">Ładowanie ogłoszeń…</div>;

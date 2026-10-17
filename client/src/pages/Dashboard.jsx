@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
+import { apiFetch } from '../api.js';
 
 function useFetch(url) {
   const [data, setData]     = useState(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    fetch(url).then(r => r.json()).then(setData).catch(() => setData(null)).finally(() => setLoading(false));
+    apiFetch(url).then(r => r.json()).then(setData).catch(() => setData(null)).finally(() => setLoading(false));
   }, [url]);
   return { data, loading };
 }

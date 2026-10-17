@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiFetch } from '../api.js';
 
 function gradeClass(v) {
   if (v === 'T') return 'grade-t';
@@ -45,7 +46,7 @@ export default function Grades() {
   const [activeSem, setActiveSem] = useState(1);
 
   useEffect(() => {
-    fetch('/api/grades').then(r => r.json()).then(data => {
+    apiFetch('/api/grades').then(r => r.json()).then(data => {
       setSubjects(data);
       if (data?.length) setSelected(data[0].name);
     }).catch(() => {});

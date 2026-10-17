@@ -3,7 +3,15 @@
 All endpoints are mounted under `/api` by [server/app.js](../server/app.js)
 and return JSON. There is currently **no authentication** — the server is
 designed for local / trusted-network use only. CORS is enabled for every
-origin.
+origin. Do not expose this API to the public internet with private student
+data.
+
+When deploying the frontend to GitHub Pages, set the frontend build variable
+`VITE_API_BASE_URL` to the HTTPS origin of the API server (without `/api`).
+The Pages deployment workflow reads it from a repository Actions variable of
+the same name. The frontend uses same-origin API requests when it is unset,
+which is suitable for local development and the Express-hosted production
+build, but not for a Pages deployment.
 
 Responses are always scoped to the **active user** (`app_config.active_user_id`)
 except for endpoints under `/api/users` and `/api/sync`, which manage all

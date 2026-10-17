@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiFetch } from '../api.js';
 
 const DAY_PL = { Monday: 'Poniedziałek', Tuesday: 'Wtorek', Wednesday: 'Środa', Thursday: 'Czwartek', Friday: 'Piątek' };
 
@@ -6,7 +7,7 @@ export default function Timetable() {
   const [data, setData] = useState(null);
 
   useEffect(() => {
-    fetch('/api/timetable').then(r => r.json()).then(setData).catch(() => {});
+    apiFetch('/api/timetable').then(r => r.json()).then(setData).catch(() => {});
   }, []);
 
   if (!data) return <div className="loading">Ładowanie planu lekcji…</div>;

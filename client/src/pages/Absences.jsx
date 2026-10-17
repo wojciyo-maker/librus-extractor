@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiFetch } from '../api.js';
 
 const TYPE_LABELS = { nb: 'Nieobecność', sp: 'Spóźnienie', u: 'Usprawiedliwione', zw: 'Zwolnione' };
 
@@ -12,7 +13,7 @@ export default function Absences() {
   const [filter, setFilter] = useState('');
 
   useEffect(() => {
-    fetch('/api/absences').then(r => r.json()).then(setData).catch(() => {});
+    apiFetch('/api/absences').then(r => r.json()).then(setData).catch(() => {});
   }, []);
 
   if (!data) return <div className="loading">Ładowanie nieobecności…</div>;

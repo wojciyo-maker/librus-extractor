@@ -92,6 +92,31 @@ npm run build   # builds client/dist
 npm start       # Express serves both API and the built SPA on PORT (default 3001)
 ```
 
+## GitHub Pages
+
+GitHub Pages can host the static React frontend, but it cannot run the Node.js
+server, scraper, or SQLite database. To deploy the frontend:
+
+1. Configure **Settings → Pages → Build and deployment → Source** as
+   **GitHub Actions**.
+2. Add a repository Actions variable named `VITE_API_BASE_URL` containing the
+   HTTPS origin of your separately hosted API (for example,
+   `https://api.example.com`; do not include `/api`).
+3. Push to the repository's default branch, or run the **Deploy to GitHub
+   Pages** workflow manually from the Actions tab.
+
+The workflow builds the client with the repository's Pages base path. Client
+navigation uses URL fragments, so refreshing a dashboard page works on Pages.
+For local development and the usual single-server production setup, leave
+`VITE_API_BASE_URL` unset; API requests then use the current origin.
+
+**Security:** the current Express API has no authentication and permits
+cross-origin requests from any website. Do not expose it publicly or connect
+Pages to it while it contains private student data. Add and configure
+authentication and restrict the backend's allowed origins before making the
+API reachable from the internet. The Pages site itself is public unless the
+repository is private and Pages access control is available for your plan.
+
 ## Repository layout
 
 ```

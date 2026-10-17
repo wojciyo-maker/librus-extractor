@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiFetch } from '../api.js';
 
 const STUDENT_TYPE_LABELS = {
   primary_lower: 'Szkoła podstawowa (klasy 1–3)',
@@ -19,7 +20,7 @@ export default function Settings() {
   const [adding, setAdding]   = useState(false);
 
   function loadUsers() {
-    fetch('/api/users').then(r => r.json()).then(setUsers).catch(() => {});
+    apiFetch('/api/users').then(r => r.json()).then(setUsers).catch(() => {});
   }
 
   useEffect(() => { loadUsers(); }, []);
@@ -29,7 +30,7 @@ export default function Settings() {
     setAdding(true);
     setAddMsg(null);
     try {
-      const res = await fetch('/api/users', {
+      const res = await apiFetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -53,7 +54,7 @@ export default function Settings() {
 
   async function handleDeleteUser(id) {
     if (!window.confirm('Usunąć tego użytkownika?')) return;
-    const res = await fetch(`/api/users/${id}`, { method: 'DELETE' });
+    const res = await apiFetch(`/api/users/${id}`, { method: 'DELETE' });
     if (res.ok) loadUsers();
     else {
       const data = await res.json();
@@ -64,7 +65,7 @@ export default function Settings() {
   async function saveStudentType(userId, student_type) {
     setUserMsg(m => ({ ...m, [userId]: null }));
     try {
-      const res = await fetch(`/api/users/${userId}`, {
+      const res = await apiFetch(`/api/users/${userId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ student_type }),
@@ -80,7 +81,7 @@ export default function Settings() {
   }
 
   useEffect(() => {
-    fetch('/api/settings').then(r => r.json()).then(data => {
+    apiFetch('/api/settings').then(r => r.json()).then(data => {
       setForm({
         emailTo:             data.emailTo             || '',
         smtpHost:            data.smtpHost            || '',
@@ -110,7 +111,7 @@ export default function Settings() {
     try {
       const body = { ...form };
       if (!body.smtpPass) delete body.smtpPass; // don't overwrite with empty
-      const res = await fetch('/api/settings', {
+      const res = await apiFetch('/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

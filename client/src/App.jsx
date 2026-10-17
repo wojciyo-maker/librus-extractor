@@ -1,5 +1,6 @@
 import { Routes, Route, NavLink } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { apiFetch } from './api.js';
 import Dashboard     from './pages/Dashboard.jsx';
 import Grades        from './pages/Grades.jsx';
 import Absences      from './pages/Absences.jsx';
@@ -24,11 +25,11 @@ export default function App() {
   const [syncMsg, setSyncMsg] = useState(null);
 
   function loadAccount() {
-    fetch('/api/account').then(r => r.json()).then(setAccount).catch(() => {});
+    apiFetch('/api/account').then(r => r.json()).then(setAccount).catch(() => {});
   }
 
   function loadUsers() {
-    fetch('/api/users').then(r => r.json()).then(setUsers).catch(() => {});
+    apiFetch('/api/users').then(r => r.json()).then(setUsers).catch(() => {});
   }
 
   useEffect(() => {
@@ -37,7 +38,7 @@ export default function App() {
   }, []);
 
   async function handleUserSwitch(id) {
-    await fetch(`/api/users/${id}/activate`, { method: 'POST' });
+    await apiFetch(`/api/users/${id}/activate`, { method: 'POST' });
     loadUsers();
     loadAccount();
     setDataVersion(v => v + 1);
@@ -47,7 +48,7 @@ export default function App() {
     setSyncing(true);
     setSyncMsg(null);
     try {
-      const res = await fetch('/api/sync', { method: 'POST' });
+      const res = await apiFetch('/api/sync', { method: 'POST' });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setSyncMsg(`Zsynchronizowano. Zmian: ${data.totalChanges}`);
